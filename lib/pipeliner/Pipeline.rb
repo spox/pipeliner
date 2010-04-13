@@ -53,8 +53,12 @@ module Pipeliner
         # block:: Block to apply to object (called without object and method set)
         # Hooks an Object into the pipeline for objects of a given type
         def hook(type, object=nil, method=nil, &block)
-            raise ArgumentError.new('No object information or block provided for hook') if !block_given? && object.nil? && method.nil?
-            raise ArgumentError.new('Block must accept a parameter') unless block.nil? || block.arity == 1 || block.arity < 0
+            if(!block_given? && object.nil? && method.nil?)
+                raise ArgumentError.new('No object information or block provided for hook')
+            end
+            if(block && block.arity > 1)
+                raise ArgumentError.new('Block must accept a parameter')
+            end
             @lock.synchronize do
                 const = Splib.find_const(type)
                 type = const unless const.nil?
