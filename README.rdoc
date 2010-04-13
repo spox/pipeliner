@@ -34,7 +34,7 @@ In the example above, we use a simple block to process any String type objects. 
 
     require 'pipeliner'
 
-    class Tester < Pipeliner::Filter
+    class Tester
         attr_reader :store
         def initialize
             @store = []
