@@ -100,6 +100,7 @@ class PipelineTest < Test::Unit::TestCase
         @pipeline.filters.add(String){|s|10}
         @pipeline.hook(Object){|s|out << s}
         @pipeline << 'fubar'
+        sleep(0.01)
         assert(out.include?(10))
         assert(!out.include?('fubar'))
         @pipeline.filters.clear
