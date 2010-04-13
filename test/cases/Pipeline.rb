@@ -32,7 +32,7 @@ class PipelineTest < Test::Unit::TestCase
     end
     def test_hook_addition
         assert_raise(ArgumentError){ @pipeline.hook(String) }
-        assert_raise(ArgumentError){ @pipeline.hook(String){ true } }
+        assert_raise(ArgumentError){ @pipeline.hook(String){ true } } if RUBY_VERSION >= '1.9.0'
         assert_raise(ArgumentError){ @pipeline.hook(String){|a,b| true} }
         assert_kind_of(Proc, @pipeline.hook(String){|a| true })
         assert_kind_of(Proc, @pipeline.hook(String){|a, *b| true })
