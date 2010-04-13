@@ -13,17 +13,21 @@ module Pipeliner
             @hooks = {}
             @lock = Mutex.new
             @filters = args[:filters] ? args[:filters] : FilterManager.new
+            if(!args[:pool])
+                Kernel.at_exit do
+                    close
+                end
+            end
         end
 
         # Close the pipeline
-        # Note: This is important to at the end of a script when not
+        # Note: This is important to call at the end of a script when not
         #       providing an ActionPool thread pool to the pipeline.
         #       This will ensure the thread pool is properly shutdown
         #       and avoid the script hanging.
         def close
             @pool.shutdown
             clear
-            @pool = nil
         end
 
         # Open the pipeline
