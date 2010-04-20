@@ -32,7 +32,7 @@ class PipelineTest < Test::Unit::TestCase
     end
     def test_hook_addition
         assert_raise(ArgumentError){ @pipeline.hook(String) }
-        assert_raise(ArgumentError){ @pipeline.hook(String){ true } }
+        assert_raise(ArgumentError){ @pipeline.hook(String){ true } } if RUBY_VERSION > '1.9.0'
         assert_raise(ArgumentError){ @pipeline.hook(String){|a,b| true} }
         assert_kind_of(Proc, @pipeline.hook(String){|a| true })
         assert_kind_of(Proc, @pipeline.hook(String){|a, *b| true })
@@ -70,6 +70,20 @@ class PipelineTest < Test::Unit::TestCase
         @pipeline.clear
         assert(@pipeline.hooks.empty?)
     end
+    def test_hook_conditional
+        obj = Tester.new
+        @pipeline.hook(String, obj, :method)
+        @pipeline << "test"
+        sleep(0.01)
+        assert_equal(1, obj.messages.size)
+        @pipeline.hook(String, obj, :method){|s| s == 'test' }
+        @pipeline << "fubar"
+        sleep(0.01)
+        assert_equal(2, obj.messages.size)
+        @pipeline << "test"
+        sleep(0.01)
+        assert_equal(4, obj.messages.size)
+    end
     def test_flush
         out = []
         assert(out.empty?)
@@ -100,6 +114,7 @@ class PipelineTest < Test::Unit::TestCase
         @pipeline.filters.add(String){|s|10}
         @pipeline.hook(Object){|s|out << s}
         @pipeline << 'fubar'
+        sleep(0.1)
         assert(out.include?(10))
         assert(!out.include?('fubar'))
         @pipeline.filters.clear
