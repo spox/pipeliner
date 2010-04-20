@@ -34,7 +34,7 @@ In the example above, we use a simple block to process any String type objects. 
 
     require 'pipeliner'
 
-    class Tester < Pipeliner::Filter
+    class Tester
         attr_reader :store
         def initialize
             @store = []
@@ -53,6 +53,31 @@ In the example above, we use a simple block to process any String type objects. 
     p obj.store
 
     => ["String", 100, {:test=>:data}]
+
+Another handy thing is limiting what hooks are called when a very generic type is hooked. When supplying an object method to call, we can also pass a block that provides the condition for which the hook will be run:
+
+    require 'pipeliner'
+
+    class Tester
+        attr_reader :store
+        def initialize
+            @store = []
+        end
+        def process(m)
+            @store << m
+        end
+    end
+
+    pipeline = Pipeliner::Pipeline.new
+    obj = Tester.new
+    pipeline.hook(Object, obj, :process){|o| o.is_a?(String) }
+    pipeline << "String"
+    pipeline << 100
+    pipeline << {:test => :data}
+    p obj.store
+
+    => ["String"]
+
 
 But, what if you want anything added to the pipeline to be modified before it is distributed out to hooked processors? Well, then you would use a filter:
 
