@@ -46,25 +46,38 @@ module Pipeliner
         # type:: Type of Objects to pass to object
         # object:: Object to hook to pipeline
         # method:: Method to call on object
-        # block:: Block to apply to object (called without object and method set)
-        # Hooks an Object into the pipeline for objects of a given type
+        # block:: Block to apply to object (called without object and method set) or conditional
+        # Hooks an Object into the pipeline for objects of a given type. The block can serve
+        # two purposes here. First, we can hook a block to a type like so:
+        #   pipeline.hook(String){|s| puts s }
+        # Or, we can use the block as a conditional for calling an object's method:
+        #   pipeline.hook(String, obj, :method){|s| s == 'test' }
+        # In the second example, this hook will only be called if the String type object
+        # matches the conditional in the block, meaning the string must be 'test'
         def hook(type, object=nil, method=nil, &block)
-            raise ArgumentError.new('No object information or block provided for hook') if !block_given? && object.nil? && method.nil?
-            raise ArgumentError.new('Block must accept a parameter') unless block.nil? || block.arity == 1 || block.arity < 0
+            raise ArgumentError.new 'Type must be provided' if type.nil?
+            unless(block.nil? || block.arity == 1 || block.arity < 0)
+                raise ArgumentError.new('Block must accept a parameter')
+            end
+            if((object && method.nil?) || (object.nil? && method))
+                raise ArgumentError.new('Object AND method must be provided')
+            end
+            if(object.nil? && method.nil? && block.nil?)
+                raise ArgumentError.new('Block or method must be provided to execute')
+            end
             @lock.synchronize do
                 const = Splib.find_const(type)
                 type = const unless const.nil?
                 @hooks[type] ||= {}
-                if(block_given?)
+                if(block_given? && object.nil? && method.nil?)
                     @hooks[type][:procs] ||= []
                     @hooks[type][:procs] << block
-                end
-                if(object && method)
+                else
                     name = object.class
                     method = method.to_sym
                     raise ArgumentError.new('Given object does not respond to given method') unless object.respond_to?(method)
                     @hooks[type][name] ||= []
-                    @hooks[type][name] << {:object => object, :method => method}
+                    @hooks[type][name] << {:object => object, :method => method, :req => block.nil? ? lambda{|x|true} : block}
                 end
             end
             block_given? ? block : nil
@@ -144,7 +157,7 @@ module Pipeliner
                     if(key == :procs)
                         objects.each{|pr| @pool.process{ pr.call(o) }}
                     else
-                        objects.each{|h| @pool.process{ h[:object].send(h[:method], o)}}
+                        objects.each{|h| @pool.process{ h[:object].send(h[:method], o) if h[:req].call(o) }}
                     end
                 end
             end
