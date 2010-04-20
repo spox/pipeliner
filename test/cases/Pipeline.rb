@@ -32,7 +32,7 @@ class PipelineTest < Test::Unit::TestCase
     end
     def test_hook_addition
         assert_raise(ArgumentError){ @pipeline.hook(String) }
-        assert_raise(ArgumentError){ @pipeline.hook(String){ true } } if RUBY_VERSION > '1.9.0'
+        assert_raise(ArgumentError){ @pipeline.hook(String){ true } } if RUBY_VERSION >= '1.9.0'
         assert_raise(ArgumentError){ @pipeline.hook(String){|a,b| true} }
         assert_kind_of(Proc, @pipeline.hook(String){|a| true })
         assert_kind_of(Proc, @pipeline.hook(String){|a, *b| true })
@@ -114,7 +114,7 @@ class PipelineTest < Test::Unit::TestCase
         @pipeline.filters.add(String){|s|10}
         @pipeline.hook(Object){|s|out << s}
         @pipeline << 'fubar'
-        sleep(0.1)
+        sleep(0.01)
         assert(out.include?(10))
         assert(!out.include?('fubar'))
         @pipeline.filters.clear

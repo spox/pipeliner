@@ -13,17 +13,21 @@ module Pipeliner
             @hooks = {}
             @lock = Mutex.new
             @filters = args[:filters] ? args[:filters] : FilterManager.new
+            if(!args[:pool])
+                Kernel.at_exit do
+                    close
+                end
+            end
         end
 
         # Close the pipeline
-        # Note: This is important to at the end of a script when not
+        # Note: This is important to call at the end of a script when not
         #       providing an ActionPool thread pool to the pipeline.
         #       This will ensure the thread pool is properly shutdown
         #       and avoid the script hanging.
         def close
             @pool.shutdown
             clear
-            @pool = nil
         end
 
         # Open the pipeline
@@ -56,14 +60,14 @@ module Pipeliner
         # matches the conditional in the block, meaning the string must be 'test'
         def hook(type, object=nil, method=nil, &block)
             raise ArgumentError.new 'Type must be provided' if type.nil?
-            unless(block.nil? || block.arity == 1 || block.arity < 0)
+            if(block && (block.arity > 1 || block.arity == 0))
                 raise ArgumentError.new('Block must accept a parameter')
             end
             if((object && method.nil?) || (object.nil? && method))
                 raise ArgumentError.new('Object AND method must be provided')
             end
-            if(object.nil? && method.nil? && block.nil?)
-                raise ArgumentError.new('Block or method must be provided to execute')
+            if(!block_given? && object.nil? && method.nil?)
+                raise ArgumentError.new('No object information or block provided for hook')
             end
             @lock.synchronize do
                 const = Splib.find_const(type)
@@ -77,7 +81,7 @@ module Pipeliner
                     method = method.to_sym
                     raise ArgumentError.new('Given object does not respond to given method') unless object.respond_to?(method)
                     @hooks[type][name] ||= []
-                    @hooks[type][name] << {:object => object, :method => method, :req => block.nil? ? lambda{|x|true} : block}
+                    @hooks[type][name] << {:object => object, :method => method, :req => !block_given? ? lambda{|x|true} : block}
                 end
             end
             block_given? ? block : nil
