@@ -1,4 +1,6 @@
-['thread', 'splib', 'actionpool', 'pipeliner/FilterManager'].each{|f| require f}
+require 'actionpool'
+require 'splib'
+require 'pipeliner/FilterManager'
 
 Splib.load :Constants
 
