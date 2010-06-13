@@ -9,11 +9,13 @@ module Pipeliner
         # args:: Hash containing initializations
         #   :pool =>:: ActionPool::Pool for the Pipeline to use
         #   :filters =>:: FilterManager for the Pipeline to use
+        #   :serial =>:: Hooks run synchronously
         # Create a new Pipeline
         def initialize(args={})
             @pool = args[:pool] ? args[:pool] : ActionPool::Pool.new
             @hooks = {}
             @lock = Mutex.new
+            @serial = args[:serial]
             @filters = args[:filters] ? args[:filters] : FilterManager.new
             if(!args[:pool])
                 Kernel.at_exit do
@@ -21,7 +23,7 @@ module Pipeliner
                 end
             end
         end
-
+        
         # Close the pipeline
         # Note: This is important to call at the end of a script when not
         #       providing an ActionPool thread pool to the pipeline.
@@ -31,7 +33,7 @@ module Pipeliner
             @pool.shutdown
             clear
         end
-
+        
         # Open the pipeline
         def open
             @pool = ActionPool::Pool.new unless @pool
@@ -41,14 +43,14 @@ module Pipeliner
         def filters
             @filters
         end
-
+        
         # fm:: FilterManager
         # Set the FilterManager the Pipeline should use
         def filters=(fm)
             raise ArgumentError.new('Expecting a FilterManager') unless fm.is_a?(FilterManager)
             @filters = fm
         end
-
+        
         # type:: Type of Objects to pass to object
         # object:: Object to hook to pipeline
         # method:: Method to call on object
@@ -88,7 +90,7 @@ module Pipeliner
             end
             block_given? ? block : nil
         end
-
+        
         # object:: Object or Proc to unhook from the pipeline
         # type:: Type of Objects being received
         # method:: method registered to call
@@ -130,17 +132,17 @@ module Pipeliner
                 @hooks.delete_if{|k,v|v.empty?}
             end
         end
-
+        
         # Return current hooks hash
         def hooks
             @lock.synchronize{ @hooks.dup }
         end
-
+        
         # Remove all hooks from the pipeline
         def clear
             @lock.synchronize{ @hooks.clear }
         end
-
+        
         # object:: Object to send down the pipeline
         # Send an object down the pipeline
         def <<(object)
@@ -151,9 +153,9 @@ module Pipeliner
                 @pool.process{ flush(object) }
             end
         end
-
+        
         private
-
+        
         # o:: Object to flush
         # Applies object to all matching hooks
         def flush(o)
@@ -161,9 +163,23 @@ module Pipeliner
                 next unless Splib.type_of?(o, type)
                 @hooks[type].each_pair do |key, objects|
                     if(key == :procs)
-                        objects.each{|pr| @pool.process{ pr.call(o) }}
+                        objects.each do |pr|
+                            if(@serial)
+                                pr.call(o)
+                            else
+                                @pool.process{ pr.call(o) }
+                            end
+                        end
                     else
-                        objects.each{|h| @pool.process{ h[:object].send(h[:method], o) if h[:req].call(o) }}
+                        objects.each do |h|
+                            if(h[:req].call(o))
+                                if(@serial)
+                                    h[:object].send(h[:method], o)
+                                else
+                                    @pool.process{ h[:object].send(h[:method], o) }
+                                end
+                            end
+                        end
                     end
                 end
             end
