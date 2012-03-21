@@ -1,4 +1,4 @@
 1.1
-    * Modified Pipeline#hook to allow conditional matching
+  * Modified Pipeline#hook to allow conditional matching
 1.0
-    * Initial release
+  * Initial release
