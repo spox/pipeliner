@@ -2,7 +2,7 @@ require 'actionpool'
 require 'splib'
 require 'pipeliner/FilterManager'
 
-Splib.load :Constants
+Splib.load :constants
 
 module Pipeliner
   class Pipeline
